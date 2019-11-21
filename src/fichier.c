@@ -15,13 +15,20 @@ Fichier *ouvrir(char *nom, char mode){
   f->mode = mode;
   f->buffer = t;
   f->offset = 0;
-  f->size = 0;
   f->fd = (f->mode == 'E')?open(nom, O_WRONLY):open(nom, O_RDONLY);
 
   if(f->fd == -1){
     free(f);
     free(t);
     return NULL;
+  }
+
+  if(mode == 'L'){
+    if(loadReadBuffer(f) == -1){
+      free(f);
+      free(t);
+      return NULL;
+    }
   }
 
   return f;
@@ -41,35 +48,52 @@ int lire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f){
   if(f->mode != 'L') return -1;
 
   Tampon *buffer = f->buffer;
-  unsigned int read = 0;
-  unsigned int toRead = (buffer->head + taille * nbelem > buffer->size)?buffer->size - buffer->head:taille * nbelem;
-  char eof = 0;
+  unsigned int out = 0;
+  unsigned int toRead = (buffer->head + taille * nbelem > buffer->tail)?buffer->tail-buffer->head:taille*nbelem;
   while(toRead != 0){
-    if(!(buffer->head > buffer->tail || buffer->tail - buffer->head >= toRead || (buffer->head == buffer->tail && buffer->head != 0))){
-      size_t readC = loadBuffer(f);
-      if(readC == -1) return -1;
-      if(toRead > buffer->tail - buffer->head + readC){
-        toRead = buffer->tail - buffer->head + readC;
-        eof = 1;
-      }
-    }
-
-    memcpy(p+read*sizeof(char),buffer->buffer + buffer->head*sizeof(char),toRead);
-    *((char*)(p+(read+toRead)*sizeof(char))) = '\0';
-
+    memcpy(p+out*sizeof(char),buffer->buffer + buffer->head*sizeof(char),toRead);
+    //*((char*)(p+(out+toRead)*sizeof(char))) = '\0';
     f->offset += toRead;
-    if(buffer->head + toRead == buffer->tail){
+    out += toRead;
+
+    if(buffer->head + toRead == buffer->size){
       buffer->head = 0;
-      buffer->tail = 0;
+      loadReadBuffer(f);
     }else
-      buffer->head = (buffer->head+toRead == buffer->size)?0:buffer->head+toRead;
-    read += toRead;
-    toRead = ((taille * nbelem - read) / buffer->size >= 1)?buffer->size:taille * nbelem - read;
-    if(eof == 1) // reached EOF
-      return read;
+      buffer->head += toRead;
+    toRead = ((taille * nbelem - out) >= buffer->tail)?buffer->tail:taille * nbelem - out;
   }
-  loadBuffer(f);
-  return read;
+
+  // Tampon *buffer = f->buffer;
+  // unsigned int read = 0;
+  // unsigned int toRead = (buffer->head + taille * nbelem > buffer->size)?buffer->size - buffer->head:taille * nbelem;
+  // char eof = 0;
+  // while(toRead != 0){
+  //   if(!(buffer->head > buffer->tail || buffer->tail - buffer->head >= toRead || (buffer->head == buffer->tail && buffer->head != 0))){
+  //     size_t readC = loadBuffer(f);
+  //     if(readC == -1) return -1;
+  //     if(toRead > buffer->tail - buffer->head + readC){
+  //       toRead = buffer->tail - buffer->head + readC;
+  //       eof = 1;
+  //     }
+  //   }
+  //
+  //   memcpy(p+read*sizeof(char),buffer->buffer + buffer->head*sizeof(char),toRead);
+  //   *((char*)(p+(read+toRead)*sizeof(char))) = '\0';
+  //
+  //   f->offset += toRead;
+  //   if(buffer->head + toRead == buffer->tail){
+  //     buffer->head = 0;
+  //     buffer->tail = 0;
+  //   }else
+  //     buffer->head = (buffer->head+toRead == buffer->size)?0:buffer->head+toRead;
+  //   read += toRead;
+  //   toRead = ((taille * nbelem - read) / buffer->size >= 1)?buffer->size:taille * nbelem - read;
+  //   if(eof == 1) // reached EOF
+  //     return read;
+  // }
+  // loadBuffer(f);
+  return out;
 }
 
 int ecrire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f){
@@ -133,4 +157,11 @@ size_t loadBuffer(Fichier *f){
     buffer->tail = buffer->head;
   }
   return rw;
+}
+
+size_t loadReadBuffer(Fichier *f){
+  size_t tmp = read(f->fd,f->buffer->buffer,f->buffer->size);
+  if(tmp < f->buffer->size) f->buffer->tail = tmp;
+  else if(tmp != -1) f->buffer->tail = f->buffer->size;
+  return tmp;
 }

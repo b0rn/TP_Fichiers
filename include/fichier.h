@@ -21,7 +21,6 @@ typedef struct Fichier {
   char mode;
   int fd;
   unsigned int offset;
-  unsigned int size;
 }Fichier;
 
 Fichier* ouvrir(char *nom, char mode);
@@ -30,6 +29,7 @@ int lire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f);
 int ecrire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f);
 
 size_t loadBuffer(Fichier *f);
+size_t loadReadBuffer(Fichier *f);
 
 #endif
 
