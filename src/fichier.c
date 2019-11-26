@@ -116,47 +116,46 @@ int ecrire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f){
   return wrote;
 }
 
-size_t loadBuffer(Fichier *f){
-  Tampon *buffer = f->buffer;
-  void *addr = buffer->buffer;
-  size_t count = 0, rw = 0;
-  if(buffer->head == buffer->tail && buffer->head == 0){
-    // si le buffer est vide , tout remplir
-    count = buffer->size;
-    rw = read(f->fd,addr,count);
-    if(rw == -1)return -1;
-    buffer->tail = buffer->size;
-  }
-  else if(buffer->tail > buffer->head){
-    // si la queue est après la tête
-    char allocStart = 1;
-    if(buffer->size - buffer->tail >= MIN_SIZE_IO){
-      // si il reste de la place à la fin du tampon , on remplit
-      addr += buffer->tail*sizeof(char);
-      count = buffer->size - buffer->tail;
-      rw = read(f->fd,addr,count);
-      if(rw == -1)return -1;
-      buffer->tail = buffer->size;
-    }else if(buffer->tail != buffer->size)
-      allocStart = -1;
-
-    if(allocStart == 1 && buffer->head >= MIN_SIZE_IO){
-      // si on peut remplir l'avant , on remplit
-      addr = buffer->buffer;
-      count = buffer->head;
-      rw = read(f->fd,addr,count);
-      if(rw == -1)return -1;
-      buffer->tail = buffer->head;
+int fecriref(Fichier *f, char *format, ...){
+    va_list vl;
+    va_start(vl,format);
+    char parsing = 0;
+    size_t formatLength = strlen(format);
+    char c;
+    char *s;
+    int d;
+    for(int i = 0; i < formatLength; i++){
+      if(format[i] == '%') parsing = 1;
+      else{
+        if(parsing == 1){
+          switch(format[i]){
+            case 'c':
+              c = (char)va_arg(vl,int);
+              ecrire(&c,1,1,f);
+            break;
+            case 's':
+              s = va_arg(vl,char*);
+              ecrire(s,1,strlen(s),f);
+            break;
+            case 'd':
+              d = va_arg(vl,int);
+              char t[34] = "";
+              int offset = 0;
+              intToString(d,t,&offset);
+              ecrire(t,1,strlen(t),f);
+            break;
+          }
+          parsing = 0;
+        }else
+          ecrire(&(format[i]),1,1,f);
+      }
     }
-  }else if(buffer->head > buffer->tail && buffer->head - buffer->tail >= MIN_SIZE_IO){
-    // si la tête est après la queue et que l'espace est suffisant entre les deux
-    addr += buffer->tail*sizeof(char);
-    count = buffer->head - buffer->tail;
-    rw = read(f->fd,addr,count);
-    if(rw == -1)return -1;
-    buffer->tail = buffer->head;
-  }
-  return rw;
+    va_end(vl);
+    return 0;
+}
+
+int fliref(Fichier *f, char *format, ...){
+  
 }
 
 size_t loadReadBuffer(Fichier *f){
@@ -164,4 +163,20 @@ size_t loadReadBuffer(Fichier *f){
   if(tmp < f->buffer->size) f->buffer->tail = tmp;
   else if(tmp != -1) f->buffer->tail = f->buffer->size;
   return tmp;
+}
+
+void intToString(int i,char *dest, int *offset){
+  if(i < 0){
+    char c = '-';
+    memcpy(dest+*offset*sizeof(char),&c,1);
+    *offset = *offset+1;
+    *(dest+*offset*sizeof(char)) = '\0';
+    i *= -1;
+  }
+  if(i/10 > 0)
+    intToString(i/10,dest,offset);
+  char c = '0' + i%10;
+  memcpy(dest+*offset*sizeof(char),&c,1);
+  *offset = *offset + 1;
+  *(dest+*offset*sizeof(char)) = '\0';
 }

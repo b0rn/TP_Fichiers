@@ -8,7 +8,7 @@ SRC=./src
 TARGET=./bin
 OBJ=./obj
 DEPS= $(OBJ)/fichier.o
-PROGRAMS=main
+PROGRAMS=main formattedString
 
 .PHONY: clean all test test_ls
 
