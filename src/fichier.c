@@ -139,7 +139,7 @@ int fecriref(Fichier *f, char *format, ...){
             break;
             case 'd':
               d = va_arg(vl,int);
-              char t[34] = "";
+              char t[35] = "";
               int offset = 0;
               intToString(d,t,&offset);
               ecrire(t,1,strlen(t),f);
@@ -155,7 +155,67 @@ int fecriref(Fichier *f, char *format, ...){
 }
 
 int fliref(Fichier *f, char *format, ...){
-  
+  va_list vl;
+  va_start(vl,format);
+  char parsing = 0;
+  size_t formatLength = strlen(format);
+  char *cPtr,cVal,cTmp = 0;
+  char *sPtr;
+  int *intPtr, count = 0, lu = 0, addedC = 0;
+  for(int i = 0; i < formatLength; i++){
+    if(cTmp == 0) cTmp = 
+    if(format[i] == '%') parsing = 1;
+    else{
+      if(parsing == 1){
+        switch(format[i]){
+          case 'c':
+            cPtr = (char)va_arg(vl,char*);
+            lu = lire(cPtr,1,1,f);
+            if(lu == 0) return count;
+            count++;
+            addedC = 1;
+          break;
+          case 's':
+            sPtr = va_arg(vl,char*);
+            lu = lire(&cVal,1,1,f);
+            addedC = 0;
+            while(lu != 0 && cVal != '\n' && cVal != ' '){
+              *(s+addedC*sizeof(char)) = cVal;
+              lu = lire(&cVal,1,1,f);
+              addedC++;
+            }
+            *(s+addedC*sizeof(char)) = '\0';
+          break;
+          case 'd':
+            d = va_arg(vl,int*);
+            char t[35] = "";
+            lu = lire(&cVal,1,1,f);
+            addedC = 0;
+            while(lu != 0 && cVal >= '0' && cVal <= '9'){
+              if(addedC == 33){
+                *(t+addedC*sizeof(char)) = cVal;
+                addedC++;
+              }
+              lu = lire(&cVal,1,1,f);
+            }
+            *(t+addedC*sizeof(char)) = '\0';
+            *d = strtol(t,NULL,10);
+          break;
+        }
+        if(addedC != 0) count++;
+        if(lu == 0) return count;
+        else
+          cTmp = cVal;
+        parsing = 0;
+        addedC = 0;
+      }else if(format[i] != ' '){
+        lire(&cVal,1,1,f);
+        if(cVal != format[i]) return count;
+      }
+    }
+  }
+  va_end(vl);
+  return 0;
 }
 
 size_t loadReadBuffer(Fichier *f){
