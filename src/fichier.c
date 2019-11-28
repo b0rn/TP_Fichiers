@@ -63,36 +63,6 @@ int lire(void *p, unsigned int taille, unsigned int nbelem, Fichier *f){
       buffer->head += toRead;
     toRead = ((taille * nbelem - out) >= buffer->tail)?buffer->tail:taille * nbelem - out;
   }
-
-  // Tampon *buffer = f->buffer;
-  // unsigned int read = 0;
-  // unsigned int toRead = (buffer->head + taille * nbelem > buffer->size)?buffer->size - buffer->head:taille * nbelem;
-  // char eof = 0;
-  // while(toRead != 0){
-  //   if(!(buffer->head > buffer->tail || buffer->tail - buffer->head >= toRead || (buffer->head == buffer->tail && buffer->head != 0))){
-  //     size_t readC = loadBuffer(f);
-  //     if(readC == -1) return -1;
-  //     if(toRead > buffer->tail - buffer->head + readC){
-  //       toRead = buffer->tail - buffer->head + readC;
-  //       eof = 1;
-  //     }
-  //   }
-  //
-  //   memcpy(p+read*sizeof(char),buffer->buffer + buffer->head*sizeof(char),toRead);
-  //   *((char*)(p+(read+toRead)*sizeof(char))) = '\0';
-  //
-  //   f->offset += toRead;
-  //   if(buffer->head + toRead == buffer->tail){
-  //     buffer->head = 0;
-  //     buffer->tail = 0;
-  //   }else
-  //     buffer->head = (buffer->head+toRead == buffer->size)?0:buffer->head+toRead;
-  //   read += toRead;
-  //   toRead = ((taille * nbelem - read) / buffer->size >= 1)?buffer->size:taille * nbelem - read;
-  //   if(eof == 1) // reached EOF
-  //     return read;
-  // }
-  // loadBuffer(f);
   return out;
 }
 
@@ -123,7 +93,7 @@ int fecriref(Fichier *f, char *format, ...){
     size_t formatLength = strlen(format);
     char c;
     char *s;
-    int d;
+    int d, count = 0;
     for(int i = 0; i < formatLength; i++){
       if(format[i] == '%') parsing = 1;
       else{
@@ -132,10 +102,12 @@ int fecriref(Fichier *f, char *format, ...){
             case 'c':
               c = (char)va_arg(vl,int);
               ecrire(&c,1,1,f);
+              count++;
             break;
             case 's':
               s = va_arg(vl,char*);
               ecrire(s,1,strlen(s),f);
+              count++;
             break;
             case 'd':
               d = va_arg(vl,int);
@@ -143,6 +115,7 @@ int fecriref(Fichier *f, char *format, ...){
               int offset = 0;
               intToString(d,t,&offset);
               ecrire(t,1,strlen(t),f);
+              count++;
             break;
           }
           parsing = 0;
@@ -151,7 +124,7 @@ int fecriref(Fichier *f, char *format, ...){
       }
     }
     va_end(vl);
-    return 0;
+    return count;
 }
 
 int fliref(Fichier *f, char *format, ...){
@@ -159,63 +132,80 @@ int fliref(Fichier *f, char *format, ...){
   va_start(vl,format);
   char parsing = 0;
   size_t formatLength = strlen(format);
-  char *cPtr,cVal,cTmp = 0;
+  char *cPtr,cVal, cTmp = 0;
   char *sPtr;
   int *intPtr, count = 0, lu = 0, addedC = 0;
   for(int i = 0; i < formatLength; i++){
-    if(cTmp == 0) cTmp = 
     if(format[i] == '%') parsing = 1;
     else{
       if(parsing == 1){
         switch(format[i]){
           case 'c':
-            cPtr = (char)va_arg(vl,char*);
-            lu = lire(cPtr,1,1,f);
+            cPtr = (char*)va_arg(vl,char*);
+            if(cTmp != 0){
+              *cPtr = cTmp;
+              lu = 1;
+              cTmp = 0;
+            }else
+              lu = lire(cPtr,1,1,f);
             if(lu == 0) return count;
-            count++;
             addedC = 1;
           break;
           case 's':
             sPtr = va_arg(vl,char*);
-            lu = lire(&cVal,1,1,f);
             addedC = 0;
+            if(cTmp != 0){
+              *sPtr = cTmp;
+              addedC++;
+              cTmp = 0;
+            }
+            lu = lire(&cVal,1,1,f);
             while(lu != 0 && cVal != '\n' && cVal != ' '){
-              *(s+addedC*sizeof(char)) = cVal;
+              *(sPtr+addedC*sizeof(char)) = cVal;
               lu = lire(&cVal,1,1,f);
               addedC++;
             }
-            *(s+addedC*sizeof(char)) = '\0';
+            *(sPtr+addedC*sizeof(char)) = '\0';
+            if(lu != 0) cTmp = cVal;
           break;
           case 'd':
-            d = va_arg(vl,int*);
+            intPtr = va_arg(vl,int*);
             char t[35] = "";
-            lu = lire(&cVal,1,1,f);
             addedC = 0;
-            while(lu != 0 && cVal >= '0' && cVal <= '9'){
-              if(addedC == 33){
+            if(cTmp != 0){
+              *t = cTmp;
+              addedC++;
+              cTmp = 0;
+            }
+            lu = lire(&cVal,1,1,f);
+            while(lu != 0 && (cVal == '-' || (cVal >= '0' && cVal <= '9' && cVal != '-'))){
+              if(addedC != 34){
                 *(t+addedC*sizeof(char)) = cVal;
                 addedC++;
               }
               lu = lire(&cVal,1,1,f);
             }
+            if(lu != 0) cTmp = cVal;
             *(t+addedC*sizeof(char)) = '\0';
-            *d = strtol(t,NULL,10);
+            *intPtr = strtol(t,NULL,10);
           break;
         }
         if(addedC != 0) count++;
         if(lu == 0) return count;
-        else
-          cTmp = cVal;
         parsing = 0;
         addedC = 0;
-      }else if(format[i] != ' '){
-        lire(&cVal,1,1,f);
+      }else{
+        if(cTmp != 0){
+          cVal = cTmp;
+          cTmp = 0;
+        }else
+          lire(&cVal,1,1,f);
         if(cVal != format[i]) return count;
       }
     }
   }
   va_end(vl);
-  return 0;
+  return count;
 }
 
 size_t loadReadBuffer(Fichier *f){
