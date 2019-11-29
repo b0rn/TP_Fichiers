@@ -16,7 +16,7 @@ TESTFILES=formatted.txt copyRandomText.txt
 
 .PHONY: clean all test test_ls
 
-all: $(PROGRAMS) $(PROGRAMS_STATIC) $(PROGRAMS_DYN) $(TESTFILES)
+all: $(PROGRAMS) $(PROGRAMS_STATIC) $(PROGRAMS_DYN)
 
 %: $(OBJ)/%.o $(DEPS) | $(TARGET)
 		$(CC) -o $(TARGET)/$@ $^ $(CFLAGS)
