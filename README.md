@@ -22,7 +22,7 @@ Les différentes versions compilées (avec bibliothèque statique/dynamique et s
 
 ## Programme *formattedString*
 * Ce programme prend un fichier vide en argument. Il y écrit deux chaines formatées et tente par la suite de lire deux chaines formatées à partir de ce même fichier.
-* Utilisation : ***formattedString fichier****
+* Utilisation : ***formattedString fichier***
 
 ## Utilisation du Makefile
 * make clean : supprime tout sauf les sources/headers
