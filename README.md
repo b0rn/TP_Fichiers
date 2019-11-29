@@ -44,4 +44,4 @@ make dynamicLibTest
 make deleteTexts
 ```
 
-Après chaque test (et avant chaque `make deleteTexts`), le contenu des fichiers *randomText.txt* *copyRandomText.txt* et *formatted.txt* peut être consulté pour vérifier le bon fonctionnement des tests.
+**Après chaque test (et avant chaque `make deleteTexts`), le contenu des fichiers *randomText.txt* *copyRandomText.txt* et *formatted.txt* peut être consulté pour vérifier le bon fonctionnement des tests.**
