@@ -15,7 +15,7 @@
 * lib/ : dossier contenant les bibliothèques générées
 
 # Tests réalisés
-## Programme main
+## Programme *main*
   * Ce programme prend 2 fichiers en arguments et copie l'intégralité du 1er fichier dans le 2eme fichier. Ensuite il tente de lire 4 caractères après la fin du 1er fichier, juste pour vérifier que ce n'est pas possible.
   * Utilisation : ***main fichier1 fichier2***
-## Programme formattedString
+## Programme *formattedString*
