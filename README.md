@@ -1,3 +1,4 @@
+TP E/S : Victor Leveneur & Florent Rigot
 # Parties codées
 * Interface Fichier :
   * Fichier* ouvrir(char *nom, char mode);
